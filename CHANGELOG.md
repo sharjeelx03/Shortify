@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.6.0
+
+- Added proper Windows installer script using Inno Setup.
+- Added `build_installer.bat` for generating `Shortify_Setup_v0.6.0.exe`.
+- Updated README for user-first download/install flow.
+- Added installer AI setup page for Ollama/API-key choice.
+- Installer can open Ollama download page after install.
+- App version bumped to 0.6.0.
+
+## v0.5.3
+- Fixed transcript fetching for youtube-transcript-api v1.x by using `YouTubeTranscriptApi().fetch()` and `list()` while keeping old API fallback compatibility.
+- Fixed packaged EXE startup error: `No module named ui`.
+- Switched internal imports to package-safe `app.*` imports.
+- Updated PyInstaller spec to include app packages explicitly.
+
 ## v0.5.1
 
 - Fixed startup crash caused by mixing `pack()` and `grid()` in the Generate page controls.

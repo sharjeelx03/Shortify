@@ -15,8 +15,8 @@ try:
 except ImportError as exc:
     raise SystemExit("CustomTkinter is missing. Run: pip install -r requirements.txt") from exc
 
-from core.providers import provider_ready
-from core.settings import (
+from app.core.providers import provider_ready
+from app.core.settings import (
     APP_NAME,
     APP_VERSION,
     FONT_BODY,
@@ -32,11 +32,11 @@ from core.settings import (
     resource_path,
     save_settings,
 )
-from ui.components import ToastManager, load_sidebar_logo
-from ui.pages.generate import GeneratePageMixin
-from ui.pages.library import LibraryPageMixin
-from ui.pages.settings_page import SettingsPageMixin
-from ui.pages.updates import UpdatesPageMixin
+from app.ui.components import ToastManager, load_sidebar_logo
+from app.ui.pages.generate import GeneratePageMixin
+from app.ui.pages.library import LibraryPageMixin
+from app.ui.pages.settings_page import SettingsPageMixin
+from app.ui.pages.updates import UpdatesPageMixin
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")

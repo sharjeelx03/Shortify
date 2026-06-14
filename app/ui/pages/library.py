@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Tuple
 
 import customtkinter as ctk
 
-from core.settings import FONT_BODY, FONT_H2, FONT_SMALL, OUTPUT_DIR, THEME
-from ui.components import make_card, open_path
+from app.core.settings import FONT_BODY, FONT_H2, FONT_SMALL, OUTPUT_DIR, THEME
+from app.ui.components import make_card, open_path
 
 
 def _fmt_size(bytes_count: int) -> str:

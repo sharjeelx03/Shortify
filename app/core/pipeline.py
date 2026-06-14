@@ -28,20 +28,85 @@ def extract_video_id(url: str) -> str:
     raise ValueError("Could not find a YouTube video ID in that URL.")
 
 
-def get_transcript(video_id: str) -> str:
-    from youtube_transcript_api import YouTubeTranscriptApi
-
-    try:
-        entries = YouTubeTranscriptApi.get_transcript(video_id)
-    except Exception:
-        transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
-        entries = transcripts.find_generated_transcript(["en"]).fetch()
+def _format_transcript_entries(entries: Any) -> str:
+    """Convert old/new youtube-transcript-api transcript objects into Shortify text."""
+    if hasattr(entries, "to_raw_data"):
+        entries = entries.to_raw_data()
 
     lines = []
     for item in entries:
-        start = int(item["start"])
-        lines.append(f"[{start // 60:02d}:{start % 60:02d}] {item['text']}")
+        if isinstance(item, dict):
+            start = int(float(item.get("start", 0)))
+            text = str(item.get("text", "")).strip()
+        else:
+            start = int(float(getattr(item, "start", 0)))
+            text = str(getattr(item, "text", "")).strip()
+        if text:
+            lines.append(f"[{start // 60:02d}:{start % 60:02d}] {text}")
+    if not lines:
+        raise ValueError("Transcript was found but it was empty.")
     return "\n".join(lines)
+
+
+def get_transcript(video_id: str) -> str:
+    """Fetch transcript using both new v1.x and older youtube-transcript-api APIs."""
+    from youtube_transcript_api import YouTubeTranscriptApi
+
+    language_priority = ["en", "en-US", "en-GB"]
+    errors: List[str] = []
+
+    # New API: YouTubeTranscriptApi().fetch(video_id, languages=[...])
+    try:
+        api = YouTubeTranscriptApi()
+        return _format_transcript_entries(api.fetch(video_id, languages=language_priority))
+    except Exception as exc:
+        errors.append(str(exc))
+
+    # New API fallback: list available transcripts, then fetch the best match.
+    try:
+        api = YouTubeTranscriptApi()
+        transcript_list = api.list(video_id)
+        finders = [
+            transcript_list.find_transcript,
+            transcript_list.find_generated_transcript,
+            transcript_list.find_manually_created_transcript,
+        ]
+        for finder in finders:
+            try:
+                transcript = finder(language_priority)
+                return _format_transcript_entries(transcript.fetch())
+            except Exception as exc:
+                errors.append(str(exc))
+
+        # Last fallback: use the first available transcript, even if it is not English.
+        for transcript in transcript_list:
+            try:
+                return _format_transcript_entries(transcript.fetch())
+            except Exception as exc:
+                errors.append(str(exc))
+    except Exception as exc:
+        errors.append(str(exc))
+
+    # Older API compatibility: static/class methods used by pre-v1 code examples.
+    if hasattr(YouTubeTranscriptApi, "get_transcript"):
+        try:
+            return _format_transcript_entries(YouTubeTranscriptApi.get_transcript(video_id, languages=language_priority))
+        except Exception as exc:
+            errors.append(str(exc))
+
+    if hasattr(YouTubeTranscriptApi, "list_transcripts"):
+        try:
+            transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+            for finder_name in ("find_transcript", "find_generated_transcript", "find_manually_created_transcript"):
+                try:
+                    transcript = getattr(transcripts, finder_name)(language_priority)
+                    return _format_transcript_entries(transcript.fetch())
+                except Exception as exc:
+                    errors.append(str(exc))
+        except Exception as exc:
+            errors.append(str(exc))
+
+    raise RuntimeError("Could not fetch transcript. " + (errors[-1] if errors else "No transcript API method succeeded."))
 
 
 def download_video(url: str, out_dir: Path, log: LogFn) -> Path:

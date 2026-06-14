@@ -19,6 +19,19 @@ for name in ['ffmpeg.exe', 'ffprobe.exe']:
         binaries.append((str(p), 'bin'))
 
 hiddenimports = [
+    'app',
+    'app.core',
+    'app.core.settings',
+    'app.core.providers',
+    'app.core.pipeline',
+    'app.ui',
+    'app.ui.shell',
+    'app.ui.components',
+    'app.ui.pages',
+    'app.ui.pages.generate',
+    'app.ui.pages.library',
+    'app.ui.pages.settings_page',
+    'app.ui.pages.updates',
     'customtkinter',
     'yt_dlp',
     'youtube_transcript_api',
@@ -31,7 +44,7 @@ hiddenimports = [
 
 a = Analysis(
     ['app/main.py'],
-    pathex=[str(project)],
+    pathex=[str(project), str(project / 'app')],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,

@@ -6,8 +6,8 @@ import webbrowser
 import customtkinter as ctk
 from tkinter import messagebox
 
-from core.settings import APP_VERSION, FONT_BODY, FONT_H2, GITHUB_API_LATEST, GITHUB_RELEASES_URL, GITHUB_URL, THEME, version_tuple
-from ui.components import make_card
+from app.core.settings import APP_VERSION, FONT_BODY, FONT_H2, GITHUB_API_LATEST, GITHUB_RELEASES_URL, GITHUB_URL, THEME, version_tuple
+from app.ui.components import make_card
 
 
 class UpdatesPageMixin:

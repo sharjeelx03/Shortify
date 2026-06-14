@@ -1,34 +1,19 @@
-Shortify v0.5.1 Update Instructions
+Shortify v0.5.2 Update
 
-1) Extract this ZIP.
+This patch fixes the packaged EXE startup error: No module named ui.
 
-2) Open the extracted Shortify folder.
+How to apply:
+1. Extract Shortify_v0.5.2.zip.
+2. Open the extracted Shortify folder.
+3. Copy everything inside it.
+4. Paste into C:\Users\User\Shortify.
+5. Choose Replace files.
+6. Run: .\run_dev.bat
+7. Build: .\build.bat
+8. Test EXE: .\dist\Shortify\Shortify.exe
 
-3) Copy everything inside that folder.
-
-4) Paste into your existing repo folder:
-   C:\Users\User\Shortify
-
-5) Choose Replace files.
-
-6) Run:
-   .\run_dev.bat
-
-7) Build:
-   .\build.bat
-
-8) Output:
-   dist\Shortify\Shortify.exe
-
-What changed in v0.5.1:
-- Shortify now exports compilation videos by default.
-- Example output: shortify_video_1.mp4, shortify_video_2.mp4, shortify_video_3.mp4.
-- Each final video contains multiple viral moments stitched into one MP4.
-- You can choose how many final videos to create, how many moments per video, and each moment length.
-- Individual helper segments are stored in the _segments folder.
-
-GitHub release:
-   git add .
-   git commit -m "Release Shortify v0.5.1"
-   git tag v0.5.1
-   git push origin main --tags
+GitHub:
+git add .
+git commit -m "Release Shortify v0.5.2"
+git tag v0.5.2
+git push origin main --tags

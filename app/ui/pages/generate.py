@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import tkinter as tk
 import customtkinter as ctk
 
-from core.pipeline import run_shortify_pipeline
-from core.providers import provider_ready
-from core.settings import (
+from app.core.pipeline import run_shortify_pipeline
+from app.core.providers import provider_ready
+from app.core.settings import (
     FONT_BODY,
     FONT_H2,
     FONT_MONO,
@@ -21,7 +21,7 @@ from core.settings import (
     check_ffmpeg,
     save_settings,
 )
-from ui.components import make_card, open_path, status_dot
+from app.ui.components import make_card, open_path, status_dot
 
 
 class GeneratePageMixin:

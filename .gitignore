@@ -32,3 +32,7 @@ Thumbs.db
 # Keep .gitkeep, but do not accidentally commit large downloaded builds unless intended.
 bin/ffmpeg.exe
 bin/ffprobe.exe
+
+# Release output
+release/*.exe
+release/*.zip

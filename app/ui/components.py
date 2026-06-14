@@ -13,7 +13,7 @@ try:
 except ImportError as exc:
     raise SystemExit("CustomTkinter is missing. Run: pip install -r requirements.txt") from exc
 
-from core.settings import FONT_BODY, FONT_SMALL, THEME, resource_path
+from app.core.settings import FONT_BODY, FONT_SMALL, THEME, resource_path
 
 
 def make_card(parent, **kwargs):

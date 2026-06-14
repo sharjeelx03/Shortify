@@ -7,8 +7,8 @@ import tkinter as tk
 from tkinter import filedialog
 import customtkinter as ctk
 
-from core.providers import test_provider_connection
-from core.settings import (
+from app.core.providers import test_provider_connection
+from app.core.settings import (
     DEFAULT_SETTINGS,
     FONT_H2,
     FONT_SMALL,
@@ -18,7 +18,7 @@ from core.settings import (
     THEME,
     save_settings,
 )
-from ui.components import make_card
+from app.ui.components import make_card
 
 
 class SettingsPageMixin:
