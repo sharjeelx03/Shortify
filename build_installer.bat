@@ -1,6 +1,8 @@
 @echo off
 setlocal EnableExtensions
 
+cd /d "%~dp0"
+
 echo ==========================================
 echo Building Shortify Installer
 echo ==========================================
@@ -8,6 +10,19 @@ echo ==========================================
 if not exist dist\Shortify\Shortify.exe (
   echo Shortify.exe not found. Building app first...
   call build.bat
+  if errorlevel 1 (
+    echo.
+    echo App build failed. Installer cannot continue.
+    pause
+    exit /b 1
+  )
+)
+
+if not exist dist\Shortify\Shortify.exe (
+  echo.
+  echo Shortify.exe still not found. Installer cannot continue.
+  pause
+  exit /b 1
 )
 
 if not exist release mkdir release
