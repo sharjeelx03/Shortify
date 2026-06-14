@@ -1,0 +1,36 @@
+SHORTIFY v0.5.1 — START HERE
+
+1) Copy all files from this folder into your GitHub repo folder.
+
+2) Open the folder in VS Code.
+
+3) Run development app:
+   .\run_dev.bat
+
+   If you are using CMD instead of PowerShell, run:
+   run_dev.bat
+
+4) Build Windows EXE:
+   .\build.bat
+
+5) Output EXE:
+   dist\Shortify\Shortify.exe
+
+What v0.5.1 does:
+- Default export is now Compilation Mode.
+- Example: 3 final MP4 videos, each containing 6 stitched viral moments.
+- Final videos are saved as shortify_video_1.mp4, shortify_video_2.mp4, shortify_video_3.mp4.
+- Helper segment clips are stored inside the _segments folder.
+
+Important:
+- The app is local-first. No login. No cloud backend.
+- At least one AI provider is required: Ollama, Claude, OpenAI, or Gemini.
+- ffmpeg/ffprobe are needed for video cutting and merging.
+- If ffmpeg is already installed on your PC, build.bat will try to copy it into bin/ automatically before building.
+- If ffmpeg is not installed, run setup_ffmpeg.bat first, then run build.bat again.
+
+GitHub push:
+   git add .
+   git commit -m "Release Shortify v0.5.1"
+   git tag v0.5.1
+   git push origin main --tags

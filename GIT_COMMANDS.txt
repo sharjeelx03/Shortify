@@ -1,0 +1,13 @@
+# After extracting/copying files into your cloned Shortify repo:
+
+git status
+git add .
+git commit -m "Release Shortify v0.5.1"
+git tag v0.5.1
+git push origin main --tags
+
+# Later, when you update code:
+
+git add .
+git commit -m "Update Shortify"
+git push origin main
