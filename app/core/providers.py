@@ -6,31 +6,28 @@ from typing import Any, Dict, List, Tuple
 
 from .settings import PROVIDER_LABELS
 
-TRANSCRIPT_CHAR_LIMIT = 20000
+TRANSCRIPT_CHAR_LIMIT = 6500
 
 
 def build_prompt(transcript: str, num_clips: int, durations: List[int]) -> str:
     duration_text = ", ".join(f"{duration}s" for duration in durations[:num_clips])
-    return f"""You are an expert viral short-form video editor.
-Find exactly {num_clips} short, high-energy viral moments from this transcript that would work well for TikTok, Instagram Reels, and YouTube Shorts.
-These moments may be stitched together into compilation-style Shorts, so prefer punchy, standalone, fast-moving moments.
+    compact_transcript = transcript[:TRANSCRIPT_CHAR_LIMIT]
+    return f"""You are Shortify's local video-selection agent.
+Select exactly {num_clips} viral moments from the transcript for short-form compilation videos.
 Target durations: {duration_text}
 
 TRANSCRIPT:
-{transcript[:TRANSCRIPT_CHAR_LIMIT]}
+{compact_transcript}
 
 Rules:
-- Strong hook in the first 3 seconds
-- Self-contained; the clip should make sense without the full video
-- Emotionally engaging: funny, surprising, valuable, controversial, or inspiring
-- Natural start and end point
-- Avoid boring intros/outros
-- Spread picks across the video when possible
-- Each moment should feel strong even when placed next to other moments
-- Return timestamps in seconds
+- Use timestamps in seconds only.
+- Pick moments with strong hooks, useful info, emotion, surprise, or controversy.
+- Avoid intros, outros, sponsors, and boring filler.
+- Keep every moment self-contained.
+- Return only JSON. No markdown.
 
-Return ONLY valid JSON, no markdown, no explanation:
-{{"clips":[{{"clip_number":1,"title":"Short punchy title","hook":"Opening line","start_seconds":45,"end_seconds":105,"duration_seconds":60,"why_viral":"One sentence","hashtags":["#tag1","#tag2","#tag3"]}}]}}"""
+JSON shape:
+{{"clips":[{{"clip_number":1,"title":"Short title","hook":"Opening line","start_seconds":45,"end_seconds":53,"duration_seconds":8,"why_viral":"One sentence","hashtags":["#shorts","#viral","#ai"]}}]}}"""
 
 
 def parse_ai_json(raw: str) -> List[Dict[str, Any]]:
@@ -112,12 +109,23 @@ def analyze_ollama(transcript: str, num_clips: int, durations: List[int], settin
     import requests
 
     prompt = build_prompt(transcript, num_clips, durations)
-    response = requests.post(
-        f"{settings['ollama_url'].rstrip('/')}/api/generate",
-        json={"model": settings["ollama_model"], "prompt": prompt, "stream": False},
-        timeout=240,
-    )
-    response.raise_for_status()
+    url = f"{settings['ollama_url'].rstrip('/')}/api/generate"
+    payload = {
+        "model": settings["ollama_model"],
+        "prompt": prompt,
+        "format": "json",
+        "stream": False,
+        "options": {
+            "temperature": 0.2,
+            "num_predict": 2200,
+        },
+    }
+    response = requests.post(url, json=payload, timeout=300)
+    if response.status_code >= 400:
+        details = response.text.strip()[:500] or response.reason
+        raise RuntimeError(
+            f"Ollama returned {response.status_code}. Model: {settings['ollama_model']}. Details: {details}"
+        )
     return parse_ai_json(response.json().get("response", ""))
 
 

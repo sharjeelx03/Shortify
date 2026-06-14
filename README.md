@@ -19,7 +19,7 @@
 Go to **Releases** and download:
 
 ```text
-Shortify_Setup_v0.6.1.exe
+Shortify_Setup_v0.6.2.exe
 ```
 
 Double-click it and install Shortify like a normal Windows app.
@@ -82,7 +82,7 @@ build_installer.bat
 Installer output:
 
 ```text
-release/Shortify_Setup_v0.6.1.exe
+release/Shortify_Setup_v0.6.2.exe
 ```
 
 ---

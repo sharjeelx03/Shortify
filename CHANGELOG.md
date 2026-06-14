@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.2
+
+- Reduced Ollama prompt size to avoid local 4k-context failures.
+- Default Ollama model changed to `llama3.2:3b`.
+- Added Ollama JSON mode for more reliable clip metadata.
+- Improved Ollama error messages so the real server response is shown.
+
 ## v0.6.1
 
 - Added proper Windows installer script using Inno Setup.

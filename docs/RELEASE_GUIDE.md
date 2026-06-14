@@ -5,7 +5,7 @@
 Users should download only this file from GitHub Releases:
 
 ```text
-Shortify_Setup_v0.6.1.exe
+Shortify_Setup_v0.6.2.exe
 ```
 
 They double-click it, install the app, and open Shortify from the Desktop or Start Menu.
@@ -20,7 +20,7 @@ build_installer.bat
 Installer output:
 
 ```text
-release/Shortify_Setup_v0.6.1.exe
+release/Shortify_Setup_v0.6.2.exe
 ```
 
 ## Upload to GitHub
