@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/logo.png" width="220" alt="Shortify Logo">
+  <img src="./assets/logo.png" width="200" alt="Shortify Logo">
 </p>
 
 <h1 align="center">Shortify</h1>
@@ -9,65 +9,59 @@
 </p>
 
 <p align="center">
-  <b>No login</b> · <b>Modern UI</b> · <b>Ollama / Claude / OpenAI / Gemini</b> · <b>Windows installer ready</b>
+  <b>No login</b> · <b>Windows UI</b> · <b>Ollama / Claude / OpenAI / Gemini</b>
 </p>
 
 ---
 
-## Download & Install
+## Download
 
-Go to the **Releases** page and download:
+Go to **Releases** and download:
 
 ```text
-Shortify_Setup_v0.6.0.exe
+Shortify_Setup_v0.6.1.exe
 ```
 
-Then double-click the installer.
+Double-click it and install Shortify like a normal Windows app.
 
-The installer will:
-
-- Install Shortify on your PC.
-- Create Start Menu shortcut.
-- Optionally create Desktop shortcut.
-- Include the required app files.
-- Include bundled Python dependencies.
-- Include ffmpeg/ffprobe when packaged by the maintainer.
-
-You do not need to clone the repo or run commands to use Shortify.
+No terminal commands are required for normal users.
 
 ---
 
-## AI Setup
+## Installer Includes
 
-Shortify needs one AI provider.
+- Shortify desktop app
+- Required Python app dependencies bundled by PyInstaller
+- ffmpeg / ffprobe if packaged by the maintainer
+- Start Menu shortcut
+- Optional Desktop shortcut
+- Uninstaller
 
-You can use:
+Ollama is **not bundled**. During setup, users can choose to open the Ollama download page.
 
-- Ollama Local
+---
+
+## AI Options
+
+Shortify needs one AI provider:
+
+- Ollama for local AI
 - Claude API key
 - OpenAI API key
 - Gemini API key
 
-Ollama is optional and is not bundled inside the installer.
-
-During installation, you can choose to open the Ollama download page if you want local AI.
+Use Ollama for local mode. Use API keys if you do not want Ollama.
 
 ---
 
-## What Shortify Does
+## What It Does
 
-Paste a YouTube link and Shortify will:
+1. Paste a YouTube link.
+2. Shortify finds viral moments with AI.
+3. It cuts and merges moments into final Shorts.
+4. Videos are saved locally on your PC.
 
-1. Fetch the transcript.
-2. Find viral moments using AI.
-3. Download the source video locally.
-4. Cut multiple moments with ffmpeg.
-5. Merge them into final compilation MP4 videos.
-6. Save everything on your PC.
-
----
-
-## Output Example
+Example output:
 
 ```text
 shortify_video_1.mp4
@@ -75,76 +69,20 @@ shortify_video_2.mp4
 shortify_video_3.mp4
 ```
 
-Each final video contains multiple stitched viral moments.
-
 ---
 
 ## For Developers
 
-Clone the repo:
-
-```bash
-git clone https://github.com/sharjeelx03/Shortify.git
-cd Shortify
-code .
-```
-
-Run development mode:
-
 ```bat
 run_dev.bat
-```
-
-Build app:
-
-```bat
 build.bat
-```
-
-Build installer:
-
-```bat
 build_installer.bat
 ```
 
 Installer output:
 
 ```text
-release/Shortify_Setup_v0.6.0.exe
-```
-
----
-
-## GitHub Release Upload
-
-Upload this file to GitHub Releases:
-
-```text
-release/Shortify_Setup_v0.6.0.exe
-```
-
-Optional:
-
-```text
-Shortify_Portable_v0.6.0.zip
-```
-
----
-
-## Project Structure
-
-```text
-Shortify/
-├─ app/
-├─ assets/
-├─ bin/
-├─ docs/
-├─ installer/
-├─ release/
-├─ requirements.txt
-├─ build.bat
-├─ build_installer.bat
-└─ README.md
+release/Shortify_Setup_v0.6.1.exe
 ```
 
 ---

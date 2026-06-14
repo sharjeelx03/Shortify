@@ -1,13 +1,13 @@
 # Changelog
 
-## v0.6.0
+## v0.6.1
 
 - Added proper Windows installer script using Inno Setup.
-- Added `build_installer.bat` for generating `Shortify_Setup_v0.6.0.exe`.
+- Added `build_installer.bat` for generating `Shortify_Setup_v0.6.1.exe`.
 - Updated README for user-first download/install flow.
 - Added installer AI setup page for Ollama/API-key choice.
 - Installer can open Ollama download page after install.
-- App version bumped to 0.6.0.
+- App version bumped to 0.6.1.
 
 ## v0.5.3
 - Fixed transcript fetching for youtube-transcript-api v1.x by using `YouTubeTranscriptApi().fetch()` and `list()` while keeping old API fallback compatibility.

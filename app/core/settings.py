@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 APP_NAME = "Shortify"
-APP_VERSION = "0.6.0"
+APP_VERSION = "0.6.1"
 GITHUB_REPO = "sharjeelx03/Shortify"
 GITHUB_URL = f"https://github.com/{GITHUB_REPO}"
 GITHUB_RELEASES_URL = f"{GITHUB_URL}/releases/latest"

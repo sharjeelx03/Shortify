@@ -1,5 +1,5 @@
 #define MyAppName "Shortify"
-#define MyAppVersion "0.6.0"
+#define MyAppVersion "0.6.1"
 #define MyAppPublisher "Muhammad Sharjeel"
 #define MyAppExeName "Shortify.exe"
 
@@ -35,7 +35,7 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{cmd}"; Parameters: "/c start \"\" \"https://ollama.com/download/windows\""; Description: "Open Ollama download page"; Flags: postinstall runhidden skipifsilent; Check: ShouldOpenOllama
+Filename: "https://ollama.com/download/windows"; Description: "Open Ollama download page"; Flags: shellexec postinstall skipifsilent; Check: ShouldOpenOllama
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
