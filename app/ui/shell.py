@@ -232,6 +232,16 @@ class ShortifyApp(GeneratePageMixin, LibraryPageMixin, SettingsPageMixin, Update
         if save:
             save_settings(self.settings)
 
+    def set_burn_subtitles(self, value: bool, save: bool = True):
+        value = bool(value)
+        self.settings["burn_subtitles"] = value
+        if hasattr(self, "burn_subtitles_var"):
+            self.burn_subtitles_var.set(value)
+        if hasattr(self, "settings_burn_subtitles_var"):
+            self.settings_burn_subtitles_var.set(value)
+        if save:
+            save_settings(self.settings)
+
     def quick_provider_changed(self, label: str):
         provider = PROVIDER_FROM_LABEL.get(label, "ollama")
         self.settings["ai_provider"] = provider
@@ -244,6 +254,9 @@ class ShortifyApp(GeneratePageMixin, LibraryPageMixin, SettingsPageMixin, Update
 
     def quick_crop_changed(self):
         self.set_vertical_crop(bool(self.vertical_crop_var.get()), save=True)
+
+    def quick_subtitles_changed(self):
+        self.set_burn_subtitles(bool(self.burn_subtitles_var.get()), save=True)
 
     def refresh_status(self):
         def run():

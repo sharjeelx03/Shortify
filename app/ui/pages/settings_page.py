@@ -99,15 +99,18 @@ class SettingsPageMixin:
         )
         self.output_dir_var = tk.StringVar(value=str(self.settings.get("output_dir", OUTPUT_DIR)))
         self._settings_entry(app_card, "Output Folder", self.output_dir_var, 1, browse=True)
+        self.transcript_limit_var = tk.StringVar(value=str(self.settings.get("transcript_char_limit", 20000)))
+        self._settings_entry(app_card, "Transcript Characters Sent to AI", self.transcript_limit_var, 2)
         self.auto_updates_var = tk.BooleanVar(value=bool(self.settings.get("auto_check_updates", True)))
         self.settings_vertical_crop_var = tk.BooleanVar(value=bool(self.settings.get("vertical_crop", True)))
+        self.settings_burn_subtitles_var = tk.BooleanVar(value=bool(self.settings.get("burn_subtitles", False)))
         ctk.CTkSwitch(
             app_card,
             text="Auto-check for GitHub updates on startup",
             variable=self.auto_updates_var,
             progress_color=THEME["accent"],
             text_color=THEME["text"],
-        ).grid(row=3, column=0, sticky="w", padx=22, pady=(10, 4))
+        ).grid(row=5, column=0, sticky="w", padx=22, pady=(10, 4))
         ctk.CTkSwitch(
             app_card,
             text="Export clips as vertical 9:16 Shorts by default",
@@ -115,7 +118,15 @@ class SettingsPageMixin:
             progress_color=THEME["accent"],
             text_color=THEME["text"],
             command=lambda: self.set_vertical_crop(bool(self.settings_vertical_crop_var.get()), save=False),
-        ).grid(row=4, column=0, sticky="w", padx=22, pady=(4, 12))
+        ).grid(row=6, column=0, sticky="w", padx=22, pady=(4, 4))
+        ctk.CTkSwitch(
+            app_card,
+            text="Burn hook subtitles into exported videos",
+            variable=self.settings_burn_subtitles_var,
+            progress_color=THEME["accent"],
+            text_color=THEME["text"],
+            command=lambda: self.set_burn_subtitles(bool(self.settings_burn_subtitles_var.get()), save=False),
+        ).grid(row=7, column=0, sticky="w", padx=22, pady=(4, 12))
         ctk.CTkButton(
             app_card,
             text="Save App Settings",
@@ -125,7 +136,7 @@ class SettingsPageMixin:
             hover_color=THEME["accent_hover"],
             text_color=THEME["bg"],
             command=self.save_settings_from_ui,
-        ).grid(row=5, column=0, sticky="ew", padx=22, pady=(0, 20))
+        ).grid(row=8, column=0, sticky="ew", padx=22, pady=(0, 20))
 
         self._init_provider_vars()
         self.render_provider_fields()
@@ -194,6 +205,15 @@ class SettingsPageMixin:
                 corner_radius=12,
                 text_color=THEME["text"],
             ).grid(row=idx * 2 + 1, column=0, sticky="ew")
+        if provider != "ollama":
+            ctk.CTkLabel(
+                self.provider_dynamic,
+                text="Warning: API keys are stored locally in your Shortify settings file. Do not share screenshots or your settings.json.",
+                text_color=THEME["warning"],
+                font=FONT_SMALL,
+                anchor="w",
+                wraplength=760,
+            ).grid(row=len(fields) * 2, column=0, sticky="ew", pady=(12, 0))
         self.test_result_label.configure(text="")
 
     def sync_settings_fields(self):
@@ -201,8 +221,12 @@ class SettingsPageMixin:
             return
         self.settings_provider_var.set(PROVIDER_LABELS.get(self.settings.get("ai_provider", "ollama"), "Ollama Local"))
         self.output_dir_var.set(str(self.settings.get("output_dir", OUTPUT_DIR)))
+        if hasattr(self, "transcript_limit_var"):
+            self.transcript_limit_var.set(str(self.settings.get("transcript_char_limit", 20000)))
         self.auto_updates_var.set(bool(self.settings.get("auto_check_updates", True)))
         self.set_vertical_crop(bool(self.settings.get("vertical_crop", True)), save=False)
+        if hasattr(self, "settings_burn_subtitles_var"):
+            self.settings_burn_subtitles_var.set(bool(self.settings.get("burn_subtitles", False)))
         for key, var in self.provider_field_vars.items():
             var.set(str(self.settings.get(key, DEFAULT_SETTINGS.get(key, ""))))
 
@@ -216,7 +240,13 @@ class SettingsPageMixin:
             settings["output_dir"] = self.output_dir_var.get().strip() or str(OUTPUT_DIR)
         if hasattr(self, "auto_updates_var"):
             settings["auto_check_updates"] = bool(self.auto_updates_var.get())
-        settings["vertical_crop"] = bool(self.settings.get("vertical_crop", True))
+        if hasattr(self, "transcript_limit_var"):
+            try:
+                settings["transcript_char_limit"] = max(3000, min(50000, int(self.transcript_limit_var.get().strip())))
+            except Exception:
+                settings["transcript_char_limit"] = 20000
+        settings["vertical_crop"] = bool(self.settings_vertical_crop_var.get()) if hasattr(self, "settings_vertical_crop_var") else bool(self.settings.get("vertical_crop", True))
+        settings["burn_subtitles"] = bool(self.settings_burn_subtitles_var.get()) if hasattr(self, "settings_burn_subtitles_var") else bool(self.settings.get("burn_subtitles", False))
         return settings
 
     def save_settings_from_ui(self):
@@ -224,6 +254,7 @@ class SettingsPageMixin:
         save_settings(self.settings)
         self.provider_menu_var.set(PROVIDER_LABELS.get(self.settings["ai_provider"], "Ollama Local"))
         self.set_vertical_crop(bool(self.settings.get("vertical_crop", True)), save=False)
+        self.set_burn_subtitles(bool(self.settings.get("burn_subtitles", False)), save=False)
         self.refresh_status()
         self.show_toast("Settings saved locally.", "success")
 

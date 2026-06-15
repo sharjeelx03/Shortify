@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from .providers import analyze_with_provider
+from .providers import analyze_with_provider, validate_clip_payload
 from .settings import bundled_binary
 
 LogFn = Callable[[str, str], None]
@@ -26,6 +26,16 @@ def extract_video_id(url: str) -> str:
         if match:
             return match.group(1)
     raise ValueError("Could not find a YouTube video ID in that URL.")
+
+
+def validate_youtube_url(url: str) -> str:
+    """Validate YouTube URL early so users see a clear error before any long work starts."""
+    url = str(url or "").strip()
+    if not url:
+        raise ValueError("Paste a YouTube URL first.")
+    if "youtube.com" not in url and "youtu.be" not in url:
+        raise ValueError("Use a valid YouTube link, for example https://www.youtube.com/watch?v=VIDEO_ID")
+    return extract_video_id(url)
 
 
 def _format_transcript_entries(entries: Any) -> str:
@@ -112,6 +122,9 @@ def get_transcript(video_id: str) -> str:
 def download_video(url: str, out_dir: Path, log: LogFn) -> Path:
     import yt_dlp
 
+    version = getattr(yt_dlp, "version", None)
+    version_text = getattr(version, "__version__", "unknown")
+    log(f"yt-dlp: {version_text} from {Path(yt_dlp.__file__).parent}", "dim")
     out_dir.mkdir(parents=True, exist_ok=True)
     ffmpeg_path = Path(bundled_binary("ffmpeg"))
     opts: Dict[str, Any] = {
@@ -138,9 +151,29 @@ def _vertical_filter() -> str:
     return "crop=w='min(iw,ih*9/16)':h='min(ih,iw*16/9)':x='(iw-out_w)/2':y='(ih-out_h)/2',scale=1080:1920"
 
 
-def cut_clip(source: Path, start: int, end: int, output: Path, log: LogFn, vertical_crop: bool = True) -> bool:
-    duration = max(1, int(end) - int(start))
-    output.parent.mkdir(parents=True, exist_ok=True)
+def _escape_drawtext(text: str) -> str:
+    text = re.sub(r"\s+", " ", str(text or "")).strip()[:120]
+    text = text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+    return text
+
+
+def _video_filter(vertical_crop: bool, burn_subtitles: bool, subtitle_text: str = "") -> Optional[str]:
+    filters: List[str] = []
+    if vertical_crop:
+        filters.append(_vertical_filter())
+    if burn_subtitles and subtitle_text:
+        caption = _escape_drawtext(subtitle_text)
+        filters.append(
+            "drawtext="
+            f"text='{caption}':"
+            "x=(w-text_w)/2:y=h-(text_h*4):"
+            "fontsize=54:fontcolor=white:"
+            "box=1:boxcolor=black@0.55:boxborderw=18"
+        )
+    return ",".join(filters) if filters else None
+
+
+def _run_ffmpeg_cut(source: Path, start: int, duration: int, output: Path, video_filter: Optional[str]) -> subprocess.CompletedProcess[str]:
     cmd = [
         bundled_binary("ffmpeg"),
         "-y",
@@ -151,8 +184,8 @@ def cut_clip(source: Path, start: int, end: int, output: Path, log: LogFn, verti
         "-t",
         str(duration),
     ]
-    if vertical_crop:
-        cmd += ["-vf", _vertical_filter()]
+    if video_filter:
+        cmd += ["-vf", video_filter]
     cmd += [
         "-c:v",
         "libx264",
@@ -166,8 +199,27 @@ def cut_clip(source: Path, start: int, end: int, output: Path, log: LogFn, verti
         "+faststart",
         str(output),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def cut_clip(
+    source: Path,
+    start: int,
+    end: int,
+    output: Path,
+    log: LogFn,
+    vertical_crop: bool = True,
+    burn_subtitles: bool = False,
+    subtitle_text: str = "",
+) -> bool:
+    duration = max(1, int(end) - int(start))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    video_filter = _video_filter(vertical_crop, burn_subtitles, subtitle_text)
+    result = _run_ffmpeg_cut(source, int(start), duration, output, video_filter)
+    if result.returncode != 0 and burn_subtitles:
+        log("Subtitle burn-in failed for this segment; retrying without subtitles.", "warn")
+        result = _run_ffmpeg_cut(source, int(start), duration, output, _video_filter(vertical_crop, False, ""))
+    if result.returncode == 0 and output.exists():
         mb = output.stat().st_size / 1048576
         log(f"Saved segment {output.name} ({mb:.1f} MB)", "ok")
         return True
@@ -185,7 +237,7 @@ def merge_clips(segments: List[Path], output: Path, log: LogFn) -> bool:
     concat_file = output.with_suffix(".concat.txt")
     lines = []
     for segment in segments:
-        safe = str(segment.resolve()).replace("\\", "/").replace("'", "'\\''")
+        safe = segment.resolve().as_posix().replace("'", "'\\''")
         lines.append(f"file '{safe}'")
     concat_file.write_text("\n".join(lines), encoding="utf-8")
 
@@ -247,6 +299,17 @@ def safe_filename(title: str) -> str:
     return re.sub(r"[^\w\-]+", "_", title.lower()).strip("_")[:34] or "clip"
 
 
+def unique_output_path(path: Path) -> Path:
+    if not path.exists():
+        return path
+    stem, suffix = path.stem, path.suffix
+    for index in range(2, 1000):
+        candidate = path.with_name(f"{stem}_{index}{suffix}")
+        if not candidate.exists():
+            return candidate
+    raise FileExistsError(f"Could not create a unique output filename for {path.name}")
+
+
 def _unique_hashtags(segment_items: List[Dict[str, Any]], limit: int = 8) -> List[str]:
     seen: List[str] = []
     for item in segment_items:
@@ -298,6 +361,7 @@ def _run_separate_clips_mode(
     source: Path,
     out_dir: Path,
     vertical_crop: bool,
+    burn_subtitles: bool,
     log: LogFn,
     progress: ProgressFn,
     should_continue: ShouldContinueFn,
@@ -308,8 +372,9 @@ def _run_separate_clips_mode(
             break
         title = str(clip.get("title", "clip"))
         clip_number = clip.get("clip_number", idx)
-        out_path = out_dir / f"short_{clip_number}_{safe_filename(title)}.mp4"
-        ok = cut_clip(source, int(clip["start_seconds"]), int(clip["end_seconds"]), out_path, log, vertical_crop=vertical_crop)
+        out_path = unique_output_path(out_dir / f"short_{clip_number}_{safe_filename(title)}.mp4")
+        subtitle_text = str(clip.get("hook") or title)
+        ok = cut_clip(source, int(clip["start_seconds"]), int(clip["end_seconds"]), out_path, log, vertical_crop=vertical_crop, burn_subtitles=burn_subtitles, subtitle_text=subtitle_text)
         if ok:
             results.append({"path": str(out_path), "clip": clip, "type": "separate_clip"})
         progress(0.74 + (0.2 * idx / max(1, len(clips))), f"Cutting clip {idx}/{len(clips)}...")
@@ -323,6 +388,7 @@ def _run_compilation_mode(
     out_dir: Path,
     settings: Dict[str, Any],
     vertical_crop: bool,
+    burn_subtitles: bool,
     log: LogFn,
     progress: ProgressFn,
     should_continue: ShouldContinueFn,
@@ -345,10 +411,11 @@ def _run_compilation_mode(
             if not should_continue():
                 break
             title = str(clip.get("title", f"moment_{segment_index}"))
-            out_path = segment_dir / f"video_{group_index:02d}_moment_{segment_index:02d}_{safe_filename(title)}.mp4"
+            out_path = unique_output_path(segment_dir / f"video_{group_index:02d}_moment_{segment_index:02d}_{safe_filename(title)}.mp4")
             start = int(float(clip["start_seconds"]))
             end = int(float(clip["end_seconds"]))
-            ok = cut_clip(source, start, end, out_path, log, vertical_crop=vertical_crop)
+            subtitle_text = str(clip.get("hook") or title)
+            ok = cut_clip(source, start, end, out_path, log, vertical_crop=vertical_crop, burn_subtitles=burn_subtitles, subtitle_text=subtitle_text)
             if ok:
                 segment_items.append({"path": str(out_path), "clip": clip, "duration": max(1, end - start)})
             processed_segments += 1
@@ -360,7 +427,7 @@ def _run_compilation_mode(
         if not segment_items:
             continue
 
-        final_path = out_dir / f"shortify_video_{group_index}.mp4"
+        final_path = unique_output_path(out_dir / f"shortify_video_{group_index}.mp4")
         if merge_clips([Path(item["path"]) for item in segment_items], final_path, log):
             metadata = _compilation_clip_metadata(group_index, segment_items, final_path)
             results.append(
@@ -404,7 +471,7 @@ def run_shortify_pipeline(
         return {"output_dir": None, "results": []}
 
     progress(0.08, "Reading YouTube URL...")
-    video_id = extract_video_id(url)
+    video_id = validate_youtube_url(url)
     out_dir = output_root / video_id
     out_dir.mkdir(parents=True, exist_ok=True)
     log(f"Video ID: {video_id}", "dim")
@@ -428,9 +495,11 @@ def run_shortify_pipeline(
 
     progress(0.34, "Asking AI for viral moments...")
     clips = analyze_with_provider(transcript, num_clips, durations, settings)
-    clips = clips[:num_clips]
+    clips = validate_clip_payload(clips, num_clips, durations)[:num_clips]
+    if len(clips) < num_clips:
+        log(f"AI returned {len(clips)}/{num_clips} usable moments after validation.", "warn")
     (out_dir / "clips.json").write_text(json.dumps({"clips": clips}, indent=2), encoding="utf-8")
-    log(f"AI found {len(clips)} viral moments.", "ok")
+    log(f"AI found {len(clips)} valid viral moments.", "ok")
 
     if not should_continue():
         return {"output_dir": out_dir, "results": []}
@@ -446,6 +515,9 @@ def run_shortify_pipeline(
         return {"output_dir": out_dir, "results": []}
 
     vertical_crop = bool(settings.get("vertical_crop", True))
+    burn_subtitles = bool(settings.get("burn_subtitles", False))
+    if burn_subtitles:
+        log("Subtitle burn-in enabled.", "accent")
     if export_mode == "compilation":
         progress(0.68, "Cutting and merging compilation videos...")
         results = _run_compilation_mode(
@@ -454,6 +526,7 @@ def run_shortify_pipeline(
             out_dir=out_dir,
             settings=settings,
             vertical_crop=vertical_crop,
+            burn_subtitles=burn_subtitles,
             log=log,
             progress=progress,
             should_continue=should_continue,
@@ -465,6 +538,7 @@ def run_shortify_pipeline(
             source=source,
             out_dir=out_dir,
             vertical_crop=vertical_crop,
+            burn_subtitles=burn_subtitles,
             log=log,
             progress=progress,
             should_continue=should_continue,
@@ -477,6 +551,7 @@ def run_shortify_pipeline(
         "clips_per_video": int(settings.get("clips_per_video", 6)),
         "segment_duration": int(settings.get("segment_duration", 8)),
         "vertical_crop": vertical_crop,
+        "burn_subtitles": burn_subtitles,
         "results": results,
     }
     (out_dir / "results.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

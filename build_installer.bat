@@ -57,6 +57,6 @@ if errorlevel 1 (
 
 echo.
 echo Installer ready:
-echo release\Shortify_Setup_v0.6.2.exe
+echo release\Shortify_Setup_v0.6.3.exe
 echo.
 pause

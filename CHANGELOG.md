@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.6.3
+
+- Increased default transcript analysis window to 20,000 characters.
+- Added user-controlled transcript character limit in Settings.
+- Added AI JSON validation before ffmpeg cuts any video.
+- Added retry logic for Ollama, Claude, OpenAI, and Gemini responses.
+- Scaled AI output token limits based on requested clip count.
+- Added early YouTube URL validation.
+- Added friendlier provider/error messages for common failures.
+- Improved Windows-safe ffmpeg concat path handling.
+- Added collision-safe output filenames so old exports are not overwritten.
+- Added visible warning for locally stored API keys.
+- Logged yt-dlp version/source during downloads for debugging.
+- Added retry prompts for placeholder/generic AI outputs.
+- Added unit tests for parsing, validation, URL extraction, and filename helpers.
+- Added elapsed/estimated remaining time in the progress label.
+- Replaced Moment Length dropdown with a slider.
+- Added optional hook subtitle burn-in for exported videos.
+
 ## v0.6.2
 
 - Reduced Ollama prompt size to avoid local 4k-context failures.

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import tkinter as tk
 import customtkinter as ctk
 
-from app.core.pipeline import run_shortify_pipeline
+from app.core.pipeline import run_shortify_pipeline, validate_youtube_url
 from app.core.providers import provider_ready
 from app.core.settings import (
     FONT_BODY,
@@ -116,20 +117,30 @@ class GeneratePageMixin:
         self._labeled_control(controls, "Clips / Video", clips_per_video_menu, 0, 1)
 
         self.segment_duration_var = tk.IntVar(value=int(self.settings.get("segment_duration", 8)))
-        segment_duration_menu = ctk.CTkOptionMenu(
-            controls,
-            values=["3", "5", "7", "8", "10", "12", "15", "20", "30"],
-            variable=tk.StringVar(value=str(self.segment_duration_var.get())),
-            height=42,
-            fg_color=THEME["card_2"],
-            button_color=THEME["card_2"],
-            button_hover_color=THEME["border"],
+        duration_frame = ctk.CTkFrame(controls, fg_color="transparent")
+        duration_frame.grid_columnconfigure(0, weight=1)
+        self.segment_duration_label = ctk.CTkLabel(
+            duration_frame,
+            text=f"{self.segment_duration_var.get()} sec",
             text_color=THEME["text"],
-            dropdown_fg_color=THEME["card"],
-            dropdown_hover_color=THEME["card_2"],
-            command=lambda value: self._compilation_value_changed("segment_duration", value),
+            font=FONT_SMALL,
+            anchor="e",
         )
-        self._labeled_control(controls, "Moment Length", segment_duration_menu, 0, 2)
+        self.segment_duration_label.grid(row=0, column=0, sticky="ew")
+        duration_slider = ctk.CTkSlider(
+            duration_frame,
+            from_=3,
+            to=30,
+            number_of_steps=27,
+            command=self._duration_slider_changed,
+            progress_color=THEME["accent"],
+            button_color=THEME["accent"],
+            button_hover_color=THEME["accent_hover"],
+            fg_color=THEME["border"],
+        )
+        duration_slider.set(self.segment_duration_var.get())
+        duration_slider.grid(row=1, column=0, sticky="ew", pady=(2, 0))
+        self._labeled_control(controls, "Moment Length", duration_frame, 0, 2)
 
         self.provider_menu_var = tk.StringVar(value=PROVIDER_LABELS.get(self.settings["ai_provider"], "Ollama Local"))
         provider_menu = ctk.CTkOptionMenu(
@@ -149,7 +160,7 @@ class GeneratePageMixin:
 
         format_row = ctk.CTkFrame(card, fg_color="transparent")
         format_row.grid(row=4, column=0, sticky="ew", padx=22, pady=(0, 18))
-        format_row.grid_columnconfigure((0, 1), weight=1)
+        format_row.grid_columnconfigure((0, 1, 2), weight=1)
 
         self.vertical_crop_var = tk.BooleanVar(value=bool(self.settings.get("vertical_crop", True)))
         crop_switch = ctk.CTkSwitch(
@@ -164,6 +175,19 @@ class GeneratePageMixin:
         )
         crop_switch.grid(row=0, column=0, sticky="w")
 
+        self.burn_subtitles_var = tk.BooleanVar(value=bool(self.settings.get("burn_subtitles", False)))
+        subtitle_switch = ctk.CTkSwitch(
+            format_row,
+            text="Burn hook subtitles",
+            variable=self.burn_subtitles_var,
+            progress_color=THEME["accent"],
+            button_color=THEME["text"],
+            button_hover_color=THEME["accent_hover"],
+            text_color=THEME["text"],
+            command=self.quick_subtitles_changed,
+        )
+        subtitle_switch.grid(row=0, column=1, sticky="w", padx=(16, 0))
+
         output_button = ctk.CTkButton(
             format_row,
             text="Open Output Folder",
@@ -174,7 +198,7 @@ class GeneratePageMixin:
             corner_radius=12,
             command=self.open_output_root,
         )
-        output_button.grid(row=0, column=1, sticky="e")
+        output_button.grid(row=0, column=2, sticky="e")
 
     def render_recent_url_chips(self):
         if not hasattr(self, "recent_urls_frame"):
@@ -237,6 +261,13 @@ class GeneratePageMixin:
         ).grid(row=row * 2, column=column, sticky="ew", padx=padx, pady=(0, 6))
         widget.grid(row=row * 2 + 1, column=column, sticky="ew", padx=padx, pady=(0, 8))
 
+    def _duration_slider_changed(self, value: float):
+        seconds = max(3, min(30, int(round(float(value)))))
+        self.segment_duration_var.set(seconds)
+        if hasattr(self, "segment_duration_label"):
+            self.segment_duration_label.configure(text=f"{seconds} sec")
+        self.update_compilation_preview()
+
     def _compilation_value_changed(self, key: str, value: str):
         try:
             number = int(value)
@@ -248,6 +279,8 @@ class GeneratePageMixin:
             self.clips_per_video_var.set(max(1, min(10, number)))
         elif key == "segment_duration":
             self.segment_duration_var.set(max(3, min(30, number)))
+            if hasattr(self, "segment_duration_label"):
+                self.segment_duration_label.configure(text=f"{self.segment_duration_var.get()} sec")
         self.update_compilation_preview()
 
     def _make_duration_card(self, parent):
@@ -350,7 +383,7 @@ class GeneratePageMixin:
             child.destroy()
         ctk.CTkLabel(
             self.results_scroll,
-            text="Final compilation videos will appear here. Each MP4 contains multiple viral moments stitched together.",
+            text="No final videos yet. Paste a YouTube link, choose your compilation settings, then click Generate.",
             text_color=THEME["muted"],
             font=FONT_BODY,
             wraplength=560,
@@ -496,10 +529,25 @@ class GeneratePageMixin:
         self.activity.delete("1.0", "end")
         self.activity.configure(state="disabled")
 
+    def _format_seconds(self, seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        minutes, sec = divmod(seconds, 60)
+        return f"{minutes}m {sec}s" if minutes else f"{sec}s"
+
     def set_progress(self, value: float, text: str):
         def apply():
-            self.progress.set(max(0, min(1, value)))
-            self.progress_label.configure(text=text)
+            clipped = max(0, min(1, value))
+            self.progress.set(clipped)
+            label = text
+            started = getattr(self, "job_started_at", None)
+            if started and 0 < clipped < 1:
+                elapsed = time.time() - started
+                if clipped >= 0.08:
+                    remaining = (elapsed / clipped) - elapsed
+                    label = f"{text} • elapsed {self._format_seconds(elapsed)} • ~{self._format_seconds(remaining)} left"
+                else:
+                    label = f"{text} • elapsed {self._format_seconds(elapsed)}"
+            self.progress_label.configure(text=label)
 
         self.after(0, apply)
 
@@ -515,6 +563,11 @@ class GeneratePageMixin:
         url = self.url_var.get().strip()
         if not url:
             self.show_toast("Paste a YouTube URL first.", "warning")
+            return None
+        try:
+            validate_youtube_url(url)
+        except Exception as exc:
+            self.show_toast(str(exc), "error")
             return None
         if not check_ffmpeg():
             self.show_toast("ffmpeg was not found. Run setup_ffmpeg.bat or place ffmpeg.exe and ffprobe.exe inside bin.", "error")
@@ -544,6 +597,7 @@ class GeneratePageMixin:
         self.settings["num_clips"] = total_moments
         self.settings["durations"] = durations[:5]
         self.set_vertical_crop(bool(self.vertical_crop_var.get()), save=False)
+        self.settings["burn_subtitles"] = bool(self.burn_subtitles_var.get()) if hasattr(self, "burn_subtitles_var") else bool(self.settings.get("burn_subtitles", False))
         save_settings(self.settings)
         self.update_compilation_preview()
         return url, total_moments, durations
@@ -554,6 +608,7 @@ class GeneratePageMixin:
             return
         url, num_clips, durations = valid
         self.remember_recent_url(url)
+        self.job_started_at = time.time()
         self.clear_activity()
         self.show_empty_results()
         self.set_progress(0.03, "Starting...")
@@ -568,6 +623,7 @@ class GeneratePageMixin:
 
     def stop_pipeline(self):
         self.running = False
+        self.job_started_at = None
         self.log("Stopped by user.", "warn")
         self.set_running(False)
         self.set_progress(0, "Stopped")
@@ -597,4 +653,5 @@ class GeneratePageMixin:
             self.log(str(exc), "err")
             self.after(0, lambda: self.show_toast(f"Shortify error: {exc}", "error", 5200))
         finally:
+            self.job_started_at = None
             self.after(0, lambda: self.set_running(False))

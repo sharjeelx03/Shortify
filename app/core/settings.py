@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 APP_NAME = "Shortify"
-APP_VERSION = "0.6.2"
+APP_VERSION = "0.6.3"
 GITHUB_REPO = "sharjeelx03/Shortify"
 GITHUB_URL = f"https://github.com/{GITHUB_REPO}"
 GITHUB_RELEASES_URL = f"{GITHUB_URL}/releases/latest"
@@ -84,6 +84,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "clips_per_video": 6,
     "segment_duration": 8,
     "vertical_crop": True,
+    "burn_subtitles": False,
+    "transcript_char_limit": 20000,
     "auto_check_updates": True,
     "recent_urls": [],
 }
