@@ -1,4 +1,4 @@
-SHORTIFY v0.5.1 — START HERE
+SHORTIFY v0.7.0 — START HERE
 
 1) Copy all files from this folder into your GitHub repo folder.
 
@@ -31,6 +31,6 @@ Important:
 
 GitHub push:
    git add .
-   git commit -m "Release Shortify v0.5.1"
-   git tag v0.5.1
+   git commit -m "Release Shortify v0.7.0"
+   git tag v0.7.0
    git push origin main --tags

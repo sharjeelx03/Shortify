@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Shortify — modern local-first desktop shell."""
-
 from __future__ import annotations
 
 import threading
@@ -13,30 +11,21 @@ import tkinter as tk
 try:
     import customtkinter as ctk
 except ImportError as exc:
-    raise SystemExit("CustomTkinter is missing. Run: pip install -r requirements.txt") from exc
+    raise SystemExit("CustomTkinter missing. Run: pip install -r requirements.txt") from exc
 
 from app.core.providers import provider_ready
 from app.core.settings import (
-    APP_NAME,
-    APP_VERSION,
-    FONT_BODY,
-    FONT_SMALL,
-    FONT_TITLE,
-    GITHUB_URL,
-    OUTPUT_DIR,
-    PROVIDER_FROM_LABEL,
-    PROVIDER_LABELS,
-    THEME,
-    check_ffmpeg,
-    load_settings,
-    resource_path,
-    save_settings,
+    APP_NAME, APP_VERSION, FONT_SMALL,
+    GITHUB_URL, OUTPUT_DIR,
+    PROVIDER_FROM_LABEL, PROVIDER_LABELS,
+    SOCIAL_LINKS, THEME,
+    check_ffmpeg, load_settings, resource_path, save_settings,
 )
-from app.ui.components import ToastManager, load_sidebar_logo
-from app.ui.pages.generate import GeneratePageMixin
-from app.ui.pages.library import LibraryPageMixin
+from app.ui.components import LoadingOverlay, ToastManager, load_sidebar_logo
+from app.ui.pages.generate      import GeneratePageMixin
+from app.ui.pages.library       import LibraryPageMixin
 from app.ui.pages.settings_page import SettingsPageMixin
-from app.ui.pages.updates import UpdatesPageMixin
+from app.ui.pages.updates       import UpdatesPageMixin
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -46,7 +35,7 @@ class ShortifyApp(GeneratePageMixin, LibraryPageMixin, SettingsPageMixin, Update
     def __init__(self):
         super().__init__()
         self.title(f"{APP_NAME} v{APP_VERSION}")
-        self.geometry("1240x800")
+        self.geometry("1260x820")
         self.minsize(1080, 720)
         self.configure(fg_color=THEME["bg"])
 
@@ -57,15 +46,17 @@ class ShortifyApp(GeneratePageMixin, LibraryPageMixin, SettingsPageMixin, Update
             except Exception:
                 pass
 
-        self.settings = load_settings()
-        self.running = False
-        self.current_output_dir: Optional[Path] = None
-        self.nav_buttons: Dict[str, ctk.CTkButton] = {}
-        self.system_rows: Dict[str, Tuple[ctk.CTkLabel, ctk.CTkLabel]] = {}
-        self.provider_field_vars: Dict[str, tk.StringVar] = {}
-        self.result_cards: List[Dict[str, Any]] = []
-        self.toast_manager = ToastManager(self)
-        self.sidebar_logo_image = None
+        self.settings:            Dict[str, Any]  = load_settings()
+        self.running:             bool             = False
+        self.current_output_dir:  Optional[Path]  = None
+        self.nav_buttons:         Dict[str, ctk.CTkButton] = {}
+        self.system_rows:         Dict[str, Tuple] = {}
+        self.provider_field_vars: Dict[str, tk.StringVar]  = {}
+        self.result_cards:        List[Dict[str, Any]] = []
+        self.sidebar_logo_image   = None
+
+        self.toast_manager   = ToastManager(self)
+        self.loading_overlay = LoadingOverlay(self, on_cancel=self.stop_pipeline)
 
         self._build_shell()
         self.show_page("generate")
@@ -75,13 +66,13 @@ class ShortifyApp(GeneratePageMixin, LibraryPageMixin, SettingsPageMixin, Update
         if self.settings.get("auto_check_updates", True):
             self.after(1600, self.check_updates_silent)
 
-    # Shell -----------------------------------------------------------------
+    # ── Shell ───────────────────────────────────────────────────────────────
 
     def _build_shell(self):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.sidebar = ctk.CTkFrame(self, fg_color=THEME["sidebar"], corner_radius=0, width=220)
+        self.sidebar = ctk.CTkFrame(self, fg_color=THEME["sidebar"], corner_radius=0, width=224)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
         self.sidebar.grid_rowconfigure(7, weight=1)
@@ -100,192 +91,153 @@ class ShortifyApp(GeneratePageMixin, LibraryPageMixin, SettingsPageMixin, Update
         self.pages.grid_rowconfigure(0, weight=1)
 
         self.generate_page = self._make_generate_page(self.pages)
-        self.library_page = self._make_library_page(self.pages)
+        self.library_page  = self._make_library_page(self.pages)
         self.settings_page = self._make_settings_page(self.pages)
-        self.updates_page = self._make_updates_page(self.pages)
+        self.updates_page  = self._make_updates_page(self.pages)
 
     def _build_sidebar(self):
         brand = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         brand.grid(row=0, column=0, sticky="ew", padx=22, pady=(24, 20))
         brand.grid_columnconfigure(0, weight=1)
 
-        self.sidebar_logo_image = load_sidebar_logo(max_size=64)
+        self.sidebar_logo_image = load_sidebar_logo(max_size=56)
         if self.sidebar_logo_image is not None:
-            ctk.CTkLabel(brand, text="", image=self.sidebar_logo_image).grid(row=0, column=0, sticky="w", pady=(0, 10))
+            ctk.CTkLabel(brand, text="", image=self.sidebar_logo_image).grid(row=0, column=0, sticky="w", pady=(0, 8))
 
-        ctk.CTkLabel(
-            brand,
-            text="Shortify",
-            text_color=THEME["accent"],
-            font=("Segoe UI", 28, "bold"),
-            anchor="w",
-        ).grid(row=1, column=0, sticky="ew")
-        ctk.CTkLabel(
-            brand,
-            text="Local AI Shorts Generator",
-            text_color=THEME["muted"],
-            font=FONT_SMALL,
-            anchor="w",
-        ).grid(row=2, column=0, sticky="ew", pady=(2, 0))
+        ctk.CTkLabel(brand, text="Shortify", text_color=THEME["accent"],
+                     font=("Segoe UI", 26, "bold")).grid(row=1, column=0, sticky="w")
+        ctk.CTkLabel(brand, text="Local AI Shorts Generator", text_color=THEME["dim"],
+                     font=FONT_SMALL).grid(row=2, column=0, sticky="w")
+
+        ctk.CTkFrame(self.sidebar, fg_color=THEME["border"], height=1).grid(
+            row=1, column=0, sticky="ew", padx=16, pady=(0, 12))
 
         nav_items = [
-            ("generate", "Generate", "✦"),
-            ("library", "Library", "▣"),
-            ("settings", "Settings", "⚙"),
-            ("updates", "Updates", "↻"),
+            ("generate", "⚡  Generate"),
+            ("library",  "📁  Library"),
+            ("settings", "⚙  Settings"),
+            ("updates",  "↑  Updates"),
         ]
-        for row, (key, label, icon_text) in enumerate(nav_items, start=1):
-            button = ctk.CTkButton(
-                self.sidebar,
-                text=f"  {icon_text}  {label}",
-                height=44,
-                corner_radius=12,
-                fg_color="transparent",
-                hover_color=THEME["card_2"],
-                text_color=THEME["muted"],
-                font=("Segoe UI", 14, "bold"),
-                anchor="w",
-                command=lambda page=key: self.show_page(page),
+        for i, (key, label) in enumerate(nav_items, start=2):
+            btn = ctk.CTkButton(
+                self.sidebar, text=label, anchor="w", height=44, corner_radius=10,
+                fg_color="transparent", hover_color=THEME["card_2"],
+                text_color=THEME["muted"], font=("Segoe UI", 14),
+                command=lambda k=key: self.show_page(k),
             )
-            button.grid(row=row, column=0, sticky="ew", padx=16, pady=4)
-            self.nav_buttons[key] = button
+            btn.grid(row=i, column=0, sticky="ew", padx=12, pady=2)
+            self.nav_buttons[key] = btn
 
-        footer = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        footer.grid(row=8, column=0, sticky="sew", padx=18, pady=22)
-        ctk.CTkLabel(footer, text=f"v{APP_VERSION}", text_color=THEME["dim"], font=FONT_SMALL).pack(anchor="w")
-        ctk.CTkButton(
-            footer,
-            text="GitHub Repo",
-            height=34,
-            fg_color=THEME["card"],
-            hover_color=THEME["card_2"],
-            text_color=THEME["text"],
-            corner_radius=10,
-            command=lambda: webbrowser.open(GITHUB_URL),
-        ).pack(fill="x", pady=(8, 0))
+        # row 7 = spacer (weight=1 set above)
+
+        ctk.CTkFrame(self.sidebar, fg_color=THEME["border"], height=1).grid(
+            row=8, column=0, sticky="ew", padx=16, pady=(8, 8))
+
+        social_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        social_frame.grid(row=9, column=0, sticky="ew", padx=12, pady=(0, 16))
+        social_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(social_frame, text="Follow & Support", text_color=THEME["dim"],
+                     font=("Segoe UI", 10), anchor="w").pack(fill="x", padx=6, pady=(0, 4))
+
+        icons = {"GitHub": "🐙", "YouTube": "▶", "Instagram": "📸"}
+        for name, url in SOCIAL_LINKS.items():
+            ctk.CTkButton(
+                social_frame, text=f"{icons.get(name, '•')}  {name}",
+                height=32, anchor="w", corner_radius=8,
+                fg_color="transparent", hover_color=THEME["card_2"],
+                text_color=THEME["muted"], font=("Segoe UI", 12),
+                command=lambda u=url: webbrowser.open(u),
+            ).pack(fill="x", pady=1)
 
     def _build_header(self):
-        self.header = ctk.CTkFrame(self.main, fg_color="transparent", height=86)
-        self.header.grid(row=0, column=0, sticky="ew", padx=24, pady=(18, 8))
-        self.header.grid_columnconfigure(0, weight=1)
+        header = ctk.CTkFrame(self.main, fg_color=THEME["sidebar"], corner_radius=0, height=54)
+        header.grid(row=0, column=0, sticky="ew")
+        header.grid_columnconfigure(0, weight=1)
+        header.grid_propagate(False)
+        self.header_title = ctk.CTkLabel(header, text="Generate", anchor="w",
+                                         text_color=THEME["text"], font=("Segoe UI", 18, "bold"))
+        self.header_title.grid(row=0, column=0, sticky="ew", padx=28, pady=14)
+        ctk.CTkLabel(header, text=f"v{APP_VERSION}", anchor="e",
+                     text_color=THEME["dim"], font=FONT_SMALL).grid(row=0, column=1, sticky="e", padx=20)
 
-        self.page_title = ctk.CTkLabel(
-            self.header, text="Generate Compilation Videos", text_color=THEME["text"], font=FONT_TITLE, anchor="w"
-        )
-        self.page_title.grid(row=0, column=0, sticky="w")
-        self.page_subtitle = ctk.CTkLabel(
-            self.header,
-            text="Paste a YouTube link and let AI stitch the best viral moments into final videos locally.",
-            text_color=THEME["muted"],
-            font=FONT_BODY,
-            anchor="w",
-        )
-        self.page_subtitle.grid(row=1, column=0, sticky="w", pady=(4, 0))
+    # ── Navigation ──────────────────────────────────────────────────────────
 
-        self.header_provider = ctk.CTkLabel(
-            self.header, text="AI: Ollama Local", text_color=THEME["accent"], font=("Segoe UI", 13, "bold")
-        )
-        self.header_provider.grid(row=0, column=1, sticky="e", padx=(8, 0))
-        self.header_status = ctk.CTkLabel(
-            self.header, text="Checking system...", text_color=THEME["muted"], font=FONT_SMALL
-        )
-        self.header_status.grid(row=1, column=1, sticky="e", padx=(8, 0), pady=(4, 0))
+    def show_page(self, key: str):
+        pages  = {"generate": self.generate_page, "library": self.library_page,
+                  "settings": self.settings_page, "updates":  self.updates_page}
+        titles = {"generate": "Generate", "library": "Library",
+                  "settings": "Settings", "updates":  "Updates"}
+        for page in pages.values():
+            page.grid_remove()
+        if key in pages:
+            pages[key].grid(row=0, column=0, sticky="nsew")
+        if hasattr(self, "header_title"):
+            self.header_title.configure(text=titles.get(key, key.title()))
+        for nav_key, btn in self.nav_buttons.items():
+            btn.configure(fg_color=THEME["card"] if nav_key == key else "transparent",
+                          text_color=THEME["accent"] if nav_key == key else THEME["muted"])
 
-    def show_page(self, page: str):
-        titles = {
-            "generate": ("Generate Compilation Videos", "Turn one YouTube video into multiple final MP4s, each stitched from viral moments."),
-            "library": ("Library", "Open generated clips with dates, sizes, and saved metadata."),
-            "settings": ("Settings", "Only the selected AI provider settings are shown."),
-            "updates": ("Updates", "Check GitHub releases and manage app version."),
-        }
-        for frame in [self.generate_page, self.library_page, self.settings_page, self.updates_page]:
-            frame.grid_forget()
-        getattr(self, f"{page}_page").grid(row=0, column=0, sticky="nsew")
+    # ── Status ──────────────────────────────────────────────────────────────
 
-        for key, button in self.nav_buttons.items():
-            if key == page:
-                button.configure(fg_color=THEME["accent"], text_color=THEME["bg"], hover_color=THEME["accent_hover"])
-            else:
-                button.configure(fg_color="transparent", text_color=THEME["muted"], hover_color=THEME["card_2"])
+    def refresh_status(self):
+        def _run():
+            ffmpeg_ok = check_ffmpeg()
+            ready, ai_msg = provider_ready(self.settings)
+            output_ok = Path(self.settings.get("output_dir", str(OUTPUT_DIR))).exists()
+            self.after(0, lambda: self._apply_status(ffmpeg_ok, ready, ai_msg, output_ok))
+        threading.Thread(target=_run, daemon=True).start()
 
-        self.page_title.configure(text=titles[page][0])
-        self.page_subtitle.configure(text=titles[page][1])
-        if page == "library":
-            self.refresh_library()
-        if page == "settings":
-            self.sync_settings_fields()
-            self.render_provider_fields()
+    def _apply_status(self, ffmpeg_ok, ai_ok, ai_msg, output_ok):
+        col = {True: THEME["success"], False: THEME["danger"]}
+        txt = {True: "Ready", False: "Not found"}
+        for key, ok, msg in [
+            ("ffmpeg", ffmpeg_ok, txt[ffmpeg_ok]),
+            ("ai",     ai_ok,     (ai_msg or ("Ready" if ai_ok else "Not configured"))[:28]),
+            ("output", output_ok, "Set" if output_ok else "Missing"),
+        ]:
+            if key in self.system_rows:
+                dot, val = self.system_rows[key]
+                dot.configure(text_color=col[ok])
+                val.configure(text=msg)
+        if "updates" in self.system_rows:
+            self.system_rows["updates"][0].configure(text_color=THEME["muted"])
+            self.system_rows["updates"][1].configure(text="See Updates tab")
+
+    # ── Settings sync ────────────────────────────────────────────────────────
+
+    def quick_provider_changed(self, label: str):
+        self.settings["ai_provider"] = PROVIDER_FROM_LABEL.get(label, "ollama")
+        save_settings(self.settings)
         self.refresh_status()
 
-    # Shared state ----------------------------------------------------------
+    def quick_crop_changed(self):
+        if hasattr(self, "crop_mode_var"):
+            from app.core.settings import CROP_MODE_KEYS
+            self.settings["crop_mode"] = CROP_MODE_KEYS.get(self.crop_mode_var.get(), "auto")
+            save_settings(self.settings)
 
-    def show_toast(self, message: str, kind: str = "info", duration_ms: int = 3200):
-        self.toast_manager.show(message, kind, duration_ms)
+    def quick_resolution_changed(self, label: str):
+        self.settings["download_resolution"] = label
+        save_settings(self.settings)
+
+    def quick_subtitles_changed(self):
+        if hasattr(self, "burn_subtitles_var"):
+            self.settings["burn_subtitles"] = bool(self.burn_subtitles_var.get())
+            save_settings(self.settings)
 
     def set_vertical_crop(self, value: bool, save: bool = True):
-        value = bool(value)
-        self.settings["vertical_crop"] = value
-        if hasattr(self, "vertical_crop_var"):
-            self.vertical_crop_var.set(value)
-        if hasattr(self, "settings_vertical_crop_var"):
-            self.settings_vertical_crop_var.set(value)
+        """Legacy compat — old settings_page calls this."""
+        self.settings["crop_mode"] = "force_vertical" if value else "auto"
         if save:
             save_settings(self.settings)
 
     def set_burn_subtitles(self, value: bool, save: bool = True):
-        value = bool(value)
         self.settings["burn_subtitles"] = value
-        if hasattr(self, "burn_subtitles_var"):
-            self.burn_subtitles_var.set(value)
-        if hasattr(self, "settings_burn_subtitles_var"):
-            self.settings_burn_subtitles_var.set(value)
         if save:
             save_settings(self.settings)
 
-    def quick_provider_changed(self, label: str):
-        provider = PROVIDER_FROM_LABEL.get(label, "ollama")
-        self.settings["ai_provider"] = provider
-        save_settings(self.settings)
-        if hasattr(self, "settings_provider_var"):
-            self.settings_provider_var.set(label)
-            self.render_provider_fields()
-        self.refresh_status()
-        self.show_toast(f"AI provider set to {label}.", "info")
+    # ── Toast ────────────────────────────────────────────────────────────────
 
-    def quick_crop_changed(self):
-        self.set_vertical_crop(bool(self.vertical_crop_var.get()), save=True)
-
-    def quick_subtitles_changed(self):
-        self.set_burn_subtitles(bool(self.burn_subtitles_var.get()), save=True)
-
-    def refresh_status(self):
-        def run():
-            ffmpeg_ok = check_ffmpeg()
-            ready, provider_msg = provider_ready(self.settings)
-            output = Path(self.settings.get("output_dir", str(OUTPUT_DIR)))
-            output_ok = output.exists() or output.parent.exists()
-
-            rows = {
-                "ffmpeg": (ffmpeg_ok, "Ready" if ffmpeg_ok else "Missing"),
-                "ai": (ready, provider_msg),
-                "output": (output_ok, "Ready" if output_ok else "Missing"),
-                "updates": (True, "GitHub"),
-            }
-
-            def apply():
-                for key, (ok, text) in rows.items():
-                    dot, value = self.system_rows[key]
-                    dot.configure(text_color=THEME["success"] if ok else THEME["danger"])
-                    value.configure(text=text, text_color=THEME["muted"])
-                provider = PROVIDER_LABELS.get(self.settings.get("ai_provider", "ollama"), "Ollama Local")
-                self.header_provider.configure(text=f"AI: {provider}")
-                self.header_status.configure(text="Ready" if ffmpeg_ok and ready else "Needs setup")
-
-            self.after(0, apply)
-
-        threading.Thread(target=run, daemon=True).start()
-
-
-if __name__ == "__main__":
-    app = ShortifyApp()
-    app.mainloop()
+    def show_toast(self, message: str, kind: str = "info", duration_ms: int = 3400):
+        self.toast_manager.show(message, kind, duration_ms)

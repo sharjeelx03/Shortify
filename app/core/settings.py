@@ -8,47 +8,72 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 APP_NAME = "Shortify"
-APP_VERSION = "0.6.3"
+APP_VERSION = "0.7.0"
 GITHUB_REPO = "sharjeelx03/Shortify"
 GITHUB_URL = f"https://github.com/{GITHUB_REPO}"
 GITHUB_RELEASES_URL = f"{GITHUB_URL}/releases/latest"
 GITHUB_API_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
+# ── Update these with your real handles ──
+SOCIAL_LINKS = {
+    "GitHub":    "https://github.com/sharjeelx03",
+    "YouTube":   "https://www.youtube.com/@MuhammadSharjeel_awan",
+    "Instagram": "https://instagram.com/sharjeelx3",
+}
+
 THEME = {
-    "bg": "#09090B",
-    "sidebar": "#0D0D10",
-    "card": "#111113",
-    "card_2": "#161618",
-    "border": "#262626",
-    "accent": "#C8FF00",
+    "bg":           "#09090B",
+    "sidebar":      "#0D0D10",
+    "card":         "#111113",
+    "card_2":       "#161618",
+    "border":       "#262626",
+    "accent":       "#C8FF00",
     "accent_hover": "#B8EB00",
-    "text": "#F5F5F5",
-    "muted": "#A1A1AA",
-    "dim": "#52525B",
-    "success": "#22C55E",
-    "warning": "#EAB308",
-    "danger": "#EF4444",
-    "blue": "#38BDF8",
+    "text":         "#F5F5F5",
+    "muted":        "#A1A1AA",
+    "dim":          "#52525B",
+    "success":      "#22C55E",
+    "warning":      "#EAB308",
+    "danger":       "#EF4444",
+    "blue":         "#38BDF8",
 }
 
 FONT_TITLE = ("Segoe UI", 30, "bold")
-FONT_H1 = ("Segoe UI", 23, "bold")
-FONT_H2 = ("Segoe UI", 17, "bold")
-FONT_BODY = ("Segoe UI", 14)
+FONT_H1    = ("Segoe UI", 23, "bold")
+FONT_H2    = ("Segoe UI", 17, "bold")
+FONT_BODY  = ("Segoe UI", 14)
 FONT_SMALL = ("Segoe UI", 12)
-FONT_MONO = ("Consolas", 12)
+FONT_MONO  = ("Consolas", 12)
 
 PROVIDER_LABELS = {
-    "ollama": "Ollama Local",
-    "claude": "Claude API",
-    "openai": "OpenAI / GPT",
-    "gemini": "Gemini API",
+    "ollama":  "Ollama Local",
+    "claude":  "Claude API",
+    "openai":  "OpenAI / GPT",
+    "gemini":  "Gemini API",
 }
 PROVIDER_FROM_LABEL = {v: k for k, v in PROVIDER_LABELS.items()}
 
+RESOLUTION_OPTIONS = ["Auto (source)", "4K (2160p)", "2K (1440p)", "1080p", "720p", "480p", "360p"]
+RESOLUTION_HEIGHT  = {
+    "Auto (source)": None,
+    "4K (2160p)":    2160,
+    "2K (1440p)":    1440,
+    "1080p":         1080,
+    "720p":          720,
+    "480p":          480,
+    "360p":          360,
+}
+
+CROP_MODE_OPTIONS = ["Auto-detect (smart)", "Always vertical 9:16", "Always horizontal 16:9", "Keep original"]
+CROP_MODE_KEYS    = {
+    "Auto-detect (smart)":    "auto",
+    "Always vertical 9:16":   "force_vertical",
+    "Always horizontal 16:9": "force_horizontal",
+    "Keep original":          "original",
+}
+
 
 def resource_path(relative: str) -> Path:
-    """Return a PyInstaller-safe resource path."""
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
     return base / relative
 
@@ -64,38 +89,39 @@ def app_data_dir() -> Path:
 
 
 SETTINGS_FILE = app_data_dir() / "settings.json"
-OUTPUT_DIR = Path.home() / "Shortify_Output"
+OUTPUT_DIR    = Path.home() / "Shortify_Output"
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
-    "ai_provider": "ollama",
-    "ollama_url": "http://localhost:11434",
-    "ollama_model": "llama3.2:3b",
-    "claude_api_key": "",
-    "claude_model": "claude-sonnet-4-6",
-    "openai_api_key": "",
-    "openai_model": "gpt-4.1-mini",
-    "gemini_api_key": "",
-    "gemini_model": "gemini-1.5-flash",
-    "output_dir": str(OUTPUT_DIR),
-    "num_clips": 3,
-    "durations": [60, 45, 30, 30, 30],
-    "export_mode": "compilation",
-    "num_final_videos": 3,
-    "clips_per_video": 6,
-    "segment_duration": 8,
-    "vertical_crop": True,
-    "burn_subtitles": False,
+    "ai_provider":           "ollama",
+    "ollama_url":            "http://localhost:11434",
+    "ollama_model":          "llama3.2:3b",
+    "claude_api_key":        "",
+    "claude_model":          "claude-sonnet-4-6",
+    "openai_api_key":        "",
+    "openai_model":          "gpt-4.1-mini",
+    "gemini_api_key":        "",
+    "gemini_model":          "gemini-1.5-flash",
+    "output_dir":            str(OUTPUT_DIR),
+    "num_clips":             3,
+    "durations":             [60, 45, 30, 30, 30],
+    "export_mode":           "compilation",
+    "num_final_videos":      3,
+    "clips_per_video":       6,
+    "segment_duration":      8,
+    "crop_mode":             "auto",
+    "download_resolution":   "720p",
+    "burn_subtitles":        False,
     "transcript_char_limit": 20000,
-    "auto_check_updates": True,
-    "recent_urls": [],
+    "auto_check_updates":    True,
+    "recent_urls":           [],
 }
 
 
 def load_settings() -> Dict[str, Any]:
     if SETTINGS_FILE.exists():
         try:
-            user_settings = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-            merged = {**DEFAULT_SETTINGS, **user_settings}
+            user = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+            merged = {**DEFAULT_SETTINGS, **user}
             durations = list(merged.get("durations", [60, 45, 30, 30, 30]))
             while len(durations) < 5:
                 durations.append(30)
@@ -137,11 +163,11 @@ def bundled_binary(name: str) -> str:
 
 def check_ffmpeg() -> bool:
     try:
+        flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         return subprocess.run(
             [bundled_binary("ffmpeg"), "-version"],
-            capture_output=True,
-            text=True,
-            timeout=6,
+            capture_output=True, text=True, timeout=6,
+            creationflags=flags,
         ).returncode == 0
     except Exception:
         return False

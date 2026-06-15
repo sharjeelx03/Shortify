@@ -1,5 +1,5 @@
 #define MyAppName "Shortify"
-#define MyAppVersion "0.6.3"
+#define MyAppVersion "0.7.0"
 #define MyAppPublisher "Muhammad Sharjeel"
 #define MyAppExeName "Shortify.exe"
 
